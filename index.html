@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>电费监控 · 宝庆苑5-2-1702-2</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f7fb;
+    --surface: rgba(255,255,255,0.6);
+    --surface-strong: rgba(255,255,255,0.85);
+    --border: rgba(15,23,42,0.08);
+    --text: #0f172a;
+    --text-soft: #475569;
+    --text-mute: #94a3b8;
+    --primary: #00b8d4;
+    --primary-glow: rgba(0,184,212,0.35);
+    --accent: #6366f1;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --shadow: 0 10px 30px -10px rgba(15,23,42,0.15);
+  }
+  [data-theme="dark"] {
+    --bg: #05070d;
+    --surface: rgba(20,25,40,0.55);
+    --surface-strong: rgba(20,25,40,0.85);
+    --border: rgba(148,163,184,0.12);
+    --text: #e2e8f0;
+    --text-soft: #94a3b8;
+    --text-mute: #64748b;
+    --primary: #22d3ee;
+    --primary-glow: rgba(34,211,238,0.45);
+    --accent: #818cf8;
+    --shadow: 0 10px 40px -10px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); overflow-x: hidden;
+    transition: background 0.4s ease, color 0.4s ease;
+  }
+
+  .bg-aurora {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  }
+  .bg-aurora::before, .bg-aurora::after {
+    content: ''; position: absolute; width: 600px; height: 600px; border-radius: 50%;
+    filter: blur(120px); opacity: 0.5; animation: float 20s ease-in-out infinite;
+  }
+  .bg-aurora::before { background: radial-gradient(circle, var(--primary) 0%, transparent 70%); top: -200px; left: -200px; }
+  .bg-aurora::after { background: radial-gradient(circle, var(--accent) 0%, transparent 70%); bottom: -200px; right: -200px; animation-delay: -10s; }
+  [data-theme="dark"] .bg-aurora::before, [data-theme="dark"] .bg-aurora::after { opacity: 0.35; }
+  @keyframes float {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(80px,-50px) scale(1.1); }
+    66% { transform: translate(-60px,40px) scale(0.95); }
+  }
+
+  .glass {
+    background: var(--surface); backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%); border: 1px solid var(--border); box-shadow: var(--shadow);
+  }
+  .glass-strong {
+    background: var(--surface-strong); backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%); border: 1px solid var(--border); box-shadow: var(--shadow);
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.65rem 1.15rem; border-radius: 12px; font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+    border: 1px solid transparent; user-select: none;
+  }
+  .btn-main {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white; box-shadow: 0 8px 20px -8px var(--primary-glow);
+    padding: 0.85rem 1.5rem; font-size: 1rem;
+  }
+  .btn-main:hover { transform: translateY(-2px); box-shadow: 0 14px 32px -8px var(--primary-glow); }
+  .btn-main:active { transform: translateY(0); }
+  .btn-main.loading { opacity: 0.7; pointer-events: none; }
+  .btn-ghost {
+    background: transparent; color: var(--text-soft); border-color: var(--border);
+  }
+  .btn-ghost:hover { background: var(--surface); color: var(--text); }
+
+  .input {
+    width: 100%; padding: 0.7rem 0.9rem; border-radius: 10px;
+    background: var(--surface-strong); border: 1px solid var(--border);
+    color: var(--text); font-size: 0.95rem; transition: all 0.2s; font-family: inherit;
+  }
+  .input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+  .input::placeholder { color: var(--text-mute); }
+  label { font-size: 0.85rem; color: var(--text-soft); font-weight: 500; display: block; margin-bottom: 0.4rem; }
+
+  .ticker { font-variant-numeric: tabular-nums; }
+
+  .fade-in { animation: fadeIn 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .pulse { animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+    z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal-content {
+    max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto;
+    animation: modalSlide 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes modalSlide { from { transform: scale(0.95) translateY(20px); opacity: 0; } }
+
+  .toggle-track {
+    width: 52px; height: 28px; border-radius: 14px; background: var(--border);
+    position: relative; cursor: pointer; transition: background 0.3s;
+  }
+  .toggle-track.active { background: linear-gradient(135deg, var(--primary), var(--accent)); }
+  .toggle-thumb {
+    position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+    background: white; border-radius: 50%; transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  .toggle-track.active .toggle-thumb { transform: translateX(24px); }
+
+  /* Calendar tab */
+  .cal-tab.active {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+  }
+  .cal-tab:not(.active) { color: var(--text-soft); }
+  .cal-tab:not(.active):hover { color: var(--text); background: var(--surface); }
+
+  /* Refresh spin */
+  .spin { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    .hero-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-aurora"></div>
+
+<!-- Modal -->
+<div id="modal" class="modal-backdrop" style="display:none;" onclick="if(event.target===this)closeModal()">
+  <div class="modal-content glass-strong rounded-2xl p-6">
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="text-lg font-bold" id="modal-title"></h3>
+      <button onclick="closeModal()" class="btn btn-ghost p-2"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between mb-6 fade-in">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-400 to-indigo-500 flex items-center justify-center shadow-lg shadow-cyan-500/30 flex-shrink-0">
+        <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <h1 class="text-lg sm:text-xl font-bold tracking-tight">电费监控</h1>
+        <p class="text-xs text-[var(--text-soft)]" id="addr-display">宝庆苑5-2-1702-2</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="openManualInput()" class="btn btn-ghost" title="手动记录">
+        <i data-lucide="pencil" class="w-4 h-4"></i>
+        <span class="hidden sm:inline">手动记录</span>
+      </button>
+      <button onclick="openSettings()" class="btn btn-ghost" title="设置">
+        <i data-lucide="settings" class="w-4 h-4"></i>
+      </button>
+      <div class="toggle-track" id="theme-toggle" onclick="toggleTheme()">
+        <div class="toggle-thumb"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero: Current Status -->
+  <section class="glass-strong rounded-3xl p-6 sm:p-8 mb-6 fade-in" style="animation-delay:0.05s">
+    <!-- Loading & Error states -->
+    <div id="status-loading" class="hidden text-center py-6">
+      <i data-lucide="loader-2" class="w-10 h-10 mx-auto mb-3 text-[var(--primary)] spin"></i>
+      <div class="text-sm text-[var(--text-soft)]">正在获取电表数据...</div>
+    </div>
+    <div id="status-error" class="hidden text-center py-6">
+      <i data-lucide="wifi-off" class="w-10 h-10 mx-auto mb-3 text-amber-400"></i>
+      <div class="text-sm text-[var(--text-soft)] mb-1 font-medium">实时数据连接失败</div>
+      <div class="text-xs text-[var(--text-mute)] mb-3 leading-relaxed" id="error-hint">
+        如果你在 CloudStudio 上查看，请在电脑上运行<br/><code style="background:var(--surface);padding:2px 8px;border-radius:4px;font-size:11px;">node server.js</code> 启动本地服务后访问本页面。
+      </div>
+      <button onclick="refreshData(true)" class="btn btn-main">重新获取</button>
+    </div>
+    <div id="status-empty" class="hidden text-center py-6">
+      <i data-lucide="plug" class="w-10 h-10 mx-auto mb-3 text-[var(--text-mute)]"></i>
+      <div class="text-sm text-[var(--text-soft)] mb-3">确保本地服务已启动，然后点击按钮获取数据</div>
+      <button onclick="refreshData(true)" class="btn btn-main">
+        <i data-lucide="download-cloud" class="w-4 h-4"></i>
+        获取数据
+      </button>
+    </div>
+
+    <!-- Data loaded -->
+    <div id="status-loaded" class="hidden">
+      <div class="flex flex-col md:flex-row items-center gap-6 md:gap-10">
+        <!-- KPI: 余额 -->
+        <div class="flex-shrink-0 text-center">
+          <div class="text-xs text-[var(--text-soft)] mb-1 font-medium uppercase tracking-wider">剩余金额</div>
+          <div class="text-4xl sm:text-5xl font-bold ticker" id="kpi-balance" style="background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">¥--</div>
+          <div class="text-xs text-[var(--text-mute)] mt-1.5">≈ <span id="kpi-kwh" class="font-semibold text-[var(--text)]">--</span> kWh</div>
+        </div>
+
+        <div class="hidden md:block w-px h-16 rounded-full" style="background: var(--border)"></div>
+
+        <!-- KPI: 电量 -->
+        <div class="flex-shrink-0 text-center">
+          <div class="text-xs text-[var(--text-soft)] mb-1 font-medium uppercase tracking-wider">单位电价</div>
+          <div class="text-3xl sm:text-4xl font-bold ticker" id="kpi-price">¥0.977</div>
+          <div class="text-xs text-[var(--text-mute)] mt-1.5">元 / kWh</div>
+        </div>
+
+        <div class="hidden md:block w-px h-16 rounded-full" style="background: var(--border)"></div>
+
+        <!-- KPI: 估算天数 -->
+        <div class="flex-shrink-0 text-center">
+          <div class="text-xs text-[var(--text-soft)] mb-1 font-medium uppercase tracking-wider">预估剩余</div>
+          <div class="text-3xl sm:text-4xl font-bold ticker" id="kpi-days">--</div>
+          <div class="text-xs text-[var(--text-mute)] mt-1.5">天（按近期日耗）</div>
+        </div>
+
+        <!-- Refresh button -->
+        <div class="md:ml-auto flex-shrink-0">
+          <button onclick="refreshData(true)" id="refresh-btn" class="btn btn-main">
+            <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-icon"></i>
+            刷新数据
+          </button>
+          <div class="text-xs text-[var(--text-mute)] mt-2 text-center" id="last-update">--</div>
+        </div>
+      </div>
+
+      <!-- Alert -->
+      <div id="alert-banner" class="hidden mt-6 p-4 rounded-xl flex items-center gap-3" style="background: linear-gradient(90deg, rgba(245,158,11,0.15), rgba(239,68,68,0.15)); border: 1px solid rgba(245,158,11,0.3);">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-500 flex-shrink-0 pulse"></i>
+        <div class="text-sm">
+          <div class="font-semibold">电费余额偏低</div>
+          <div class="text-[var(--text-soft)] text-xs mt-0.5" id="alert-msg"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Usage Summary + Quick Stats -->
+  <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 fade-in" style="animation-delay:0.1s">
+    <div class="glass rounded-2xl p-4 hover:scale-[1.02] transition-transform">
+      <div class="flex items-center gap-2 mb-1.5 text-xs text-[var(--text-soft)]"><i data-lucide="calendar-clock" class="w-3 h-3"></i>今日用量</div>
+      <div class="text-xl font-bold ticker" id="stat-today">-- <span class="text-sm font-normal text-[var(--text-mute)]">kWh</span></div>
+    </div>
+    <div class="glass rounded-2xl p-4 hover:scale-[1.02] transition-transform">
+      <div class="flex items-center gap-2 mb-1.5 text-xs text-[var(--text-soft)]"><i data-lucide="activity" class="w-3 h-3"></i>昨日用量</div>
+      <div class="text-xl font-bold ticker" id="stat-yesterday">-- <span class="text-sm font-normal text-[var(--text-mute)]">kWh</span></div>
+    </div>
+    <div class="glass rounded-2xl p-4 hover:scale-[1.02] transition-transform">
+      <div class="flex items-center gap-2 mb-1.5 text-xs text-[var(--text-soft)]"><i data-lucide="trending-up" class="w-3 h-3"></i>日均消耗</div>
+      <div class="text-xl font-bold ticker" id="stat-avg">-- <span class="text-sm font-normal text-[var(--text-mute)]">kWh</span></div>
+    </div>
+    <div class="glass rounded-2xl p-4 hover:scale-[1.02] transition-transform">
+      <div class="flex items-center gap-2 mb-1.5 text-xs text-[var(--text-soft)]"><i data-lucide="flame" class="w-3 h-3"></i>日均花费</div>
+      <div class="text-xl font-bold ticker" id="stat-cost">-- <span class="text-sm font-normal text-[var(--text-mute)]">元</span></div>
+    </div>
+  </section>
+
+  <!-- Calendar, Week & Month Views -->
+  <section class="glass-strong rounded-3xl p-5 sm:p-7 mb-6 fade-in" style="animation-delay:0.12s">
+    <!-- Tabs -->
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-base font-bold flex items-center gap-2">
+        <i data-lucide="calendar-days" class="w-5 h-5 text-[var(--primary)]"></i>用量日历
+      </h2>
+      <div class="flex gap-1 bg-[var(--surface)] rounded-xl p-1">
+        <button class="cal-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active" data-view="day">日历</button>
+        <button class="cal-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" data-view="week">周报</button>
+        <button class="cal-tab px-3 py-1.5 rounded-lg text-xs font-semibold transition-all" data-view="month">月报</button>
+      </div>
+    </div>
+
+    <!-- Calendar View -->
+    <div id="cal-view-day">
+      <div class="flex items-center justify-between mb-3">
+        <button onclick="calShift(-1)" class="btn btn-ghost p-1.5"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+        <span class="text-sm font-bold" id="cal-month-label">2026年7月</span>
+        <button onclick="calShift(1)" class="btn btn-ghost p-1.5"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+      </div>
+      <div class="grid grid-cols-7 gap-1 sm:gap-2 text-center text-xs">
+        <div class="text-[var(--text-mute)] font-medium py-1">日</div>
+        <div class="text-[var(--text-mute)] font-medium py-1">一</div>
+        <div class="text-[var(--text-mute)] font-medium py-1">二</div>
+        <div class="text-[var(--text-mute)] font-medium py-1">三</div>
+        <div class="text-[var(--text-mute)] font-medium py-1">四</div>
+        <div class="text-[var(--text-mute)] font-medium py-1">五</div>
+        <div class="text-[var(--text-mute)] font-medium py-1">六</div>
+      </div>
+      <div class="grid grid-cols-7 gap-1 sm:gap-2" id="cal-grid"></div>
+      <div class="flex items-center justify-center gap-3 mt-3 text-[10px] text-[var(--text-mute)]">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm" style="background:#e2e8f0;"></span> 无数据</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm" style="background:#bae6fd;"></span> 少量</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm" style="background:#38bdf8;"></span> 中等</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm" style="background:#0284c7;"></span> 较多</span>
+      </div>
+    </div>
+
+    <!-- Week View -->
+    <div id="cal-view-week" class="hidden">
+      <div class="flex items-center justify-between mb-3">
+        <button onclick="weekShift(-1)" class="btn btn-ghost p-1.5"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+        <span class="text-sm font-bold" id="week-label">本周</span>
+        <button onclick="weekShift(1)" class="btn btn-ghost p-1.5"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="week-table">
+          <thead>
+            <tr class="text-left text-[var(--text-soft)] border-b" style="border-color: var(--border)">
+              <th class="py-2 px-2 font-medium">日期</th>
+              <th class="py-2 px-2 font-medium text-right">用电量</th>
+              <th class="py-2 px-2 font-medium text-right">花费</th>
+              <th class="py-2 px-2 font-medium">对比</th>
+            </tr>
+          </thead>
+          <tbody id="week-tbody"></tbody>
+        </table>
+      </div>
+      <div class="flex gap-4 mt-4 justify-end text-sm" id="week-summary"></div>
+    </div>
+
+    <!-- Month View -->
+    <div id="cal-view-month" class="hidden">
+      <div class="flex items-center justify-between mb-3">
+        <button onclick="monthShift(-1)" class="btn btn-ghost p-1.5"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+        <span class="text-sm font-bold" id="month-label">2026年7月</span>
+        <button onclick="monthShift(1)" class="btn btn-ghost p-1.5"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4" id="month-stats"></div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[var(--text-soft)] border-b" style="border-color: var(--border)">
+              <th class="py-2 px-2 font-medium">日期</th>
+              <th class="py-2 px-2 font-medium text-right">用电</th>
+              <th class="py-2 px-2 font-medium text-right">花费</th>
+              <th class="py-2 px-2 font-medium text-right">余额</th>
+            </tr>
+          </thead>
+          <tbody id="month-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 fade-in" style="animation-delay:0.15s">
+    <div class="glass rounded-2xl p-6">
+      <h2 class="text-base font-bold flex items-center gap-2 mb-4"><i data-lucide="bar-chart-3" class="w-5 h-5 text-[var(--primary)]"></i>余额变化趋势</h2>
+      <div style="position:relative; height:260px;"><canvas id="chart-balance"></canvas></div>
+    </div>
+    <div class="glass rounded-2xl p-6">
+      <h2 class="text-base font-bold flex items-center gap-2 mb-4"><i data-lucide="activity" class="w-5 h-5 text-[var(--primary)]"></i>电力消耗趋势 (kWh)</h2>
+      <div style="position:relative; height:260px;"><canvas id="chart-kwh"></canvas></div>
+    </div>
+  </section>
+
+  <!-- History Table -->
+  <section class="glass rounded-2xl p-6 fade-in" style="animation-delay:0.2s">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-bold flex items-center gap-2">
+        <i data-lucide="history" class="w-5 h-5 text-[var(--primary)]"></i>数据记录
+        <span class="text-xs font-normal text-[var(--text-mute)]" id="record-count">(0)</span>
+      </h2>
+      <div class="flex gap-2">
+        <button onclick="exportData()" class="btn btn-ghost text-xs"><i data-lucide="download" class="w-3.5 h-3.5"></i>导出</button>
+        <button onclick="confirmClear()" class="btn btn-ghost text-xs" style="color: var(--danger); border-color: rgba(239,68,68,0.3);"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>清空</button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-[var(--text-soft)] border-b" style="border-color: var(--border)">
+            <th class="py-2.5 px-2 font-medium">时间</th>
+            <th class="py-2.5 px-2 font-medium text-right">余额</th>
+            <th class="py-2.5 px-2 font-medium text-right">电量</th>
+            <th class="py-2.5 px-2 font-medium text-right">日消耗</th>
+            <th class="py-2.5 px-2 font-medium text-right">日花费</th>
+          </tr>
+        </thead>
+        <tbody id="records-tbody"></tbody>
+      </table>
+    </div>
+    <div id="empty-state" class="text-center py-12 text-[var(--text-mute)]">
+      <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-3 opacity-50"></i>
+      <div class="text-sm">暂无记录</div>
+      <div class="text-xs mt-1">点击"刷新数据"开始追踪</div>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs text-[var(--text-mute)] mt-10 pb-4">
+    <div id="footer-local" class="hidden">📱 手机访问：<code style="background:var(--surface);padding:2px 6px;border-radius:4px;">http://192.168.5.27:8080/</code>（需同 WiFi）</div>
+    <div class="mt-1">实时数据来自辰域智控 · 数据不离开你的设备</div>
+  </footer>
+</div>
+
+<script>
+// ─── State ───
+let state = { history: [], current: null, theme: 'light', alertThreshold: 30, manualRecords: [], autoInterval: null, dataSource: 'local' };
+let chartBalance, chartKwh;
+const API_BASE = '';
+const POLL_INTERVAL = 5000;
+// 改成你的 GitHub 用户名和仓库名即可
+const REMOTE_DATA_URL = 'https://raw.githubusercontent.com/CandaYin/electricity-monitor/main/data.json';
+
+// ─── Helpers ───
+function fmtLocal(ts) {
+  // Convert UTC ISO timestamp to local "MM-DD HH:mm" string
+  if (!ts) return '--';
+  try {
+    const d = new Date(ts.endsWith('Z') ? ts : ts + 'Z');
+    if (isNaN(d.getTime())) {
+      // fallback: try without timezone
+      const d2 = new Date(ts);
+      if (isNaN(d2.getTime())) return ts.slice(5, 16).replace('T', ' ');
+      const M = String(d2.getMonth() + 1).padStart(2, '0');
+      const D = String(d2.getDate()).padStart(2, '0');
+      const h = String(d2.getHours()).padStart(2, '0');
+      const m = String(d2.getMinutes()).padStart(2, '0');
+      return `${M}-${D} ${h}:${m}`;
+    }
+    const M = String(d.getMonth() + 1).padStart(2, '0');
+    const D = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${M}-${D} ${h}:${m}`;
+  } catch { return ts.slice(5, 16).replace('T', ' '); }
+}
+
+// ─── LocalStorage helpers (for manual records + settings) ───
+function loadLocal() {
+  try { return JSON.parse(localStorage.getItem('em-v2') || '{}'); } catch { return {}; }
+}
+function saveLocal(obj) { localStorage.setItem('em-v2', JSON.stringify(obj)); }
+function initLocal() {
+  const l = loadLocal();
+  state.theme = l.theme || 'light';
+  state.alertThreshold = l.alertThreshold || 30;
+  state.manualRecords = l.manualRecords || [];
+}
+
+// ─── Theme ───
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('theme-toggle').classList.toggle('active', t === 'dark');
+  state.theme = t;
+  saveLocal({ theme: t, alertThreshold: state.alertThreshold, manualRecords: state.manualRecords });
+  renderCharts();
+}
+function toggleTheme() { applyTheme(state.theme === 'dark' ? 'light' : 'dark'); }
+
+// ─── Data fetching ───
+async function refreshData(force = false) {
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  const loading = document.getElementById('status-loading');
+  const error = document.getElementById('status-error');
+  const empty = document.getElementById('status-empty');
+  const loaded = document.getElementById('status-loaded');
+
+  // Only show loading UI on forced refresh
+  if (force) {
+    [loading, error, empty, loaded].forEach(el => el.classList.add('hidden'));
+    loading.classList.remove('hidden');
+    if (btn) { btn.classList.add('loading'); icon.classList.add('spin'); }
+  }
+
+  try {
+    const endpoint = force ? '/api/meter/force' : '/api/meter';
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    let timer = null;
+    if (controller) timer = setTimeout(() => controller.abort(), 15000);
+    const resp = await fetch(API_BASE + endpoint, { signal: controller?.signal });
+    const json = await resp.json();
+    if (!json.success) throw new Error(json.error || '未知错误');
+
+    const changed = !state.current ||
+      state.current.remainingKwh !== json.current?.remainingKwh ||
+      state.current.remainingBalance !== json.current?.remainingBalance;
+
+    state.current = json.current;
+    state.history = json.history;
+    state.dataSource = 'local';
+    state.history = mergeHistory(state.history, state.manualRecords);
+
+    loading.classList.add('hidden');
+    loaded.classList.remove('hidden');
+
+    const now = new Date();
+    const srcTag = state.dataSource === 'github' ? ' <span style="background:var(--surface);padding:1px 6px;border-radius:4px;font-size:10px;">GitHub</span>' : '';
+    document.getElementById('last-update').innerHTML =
+      `更新于 ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}${srcTag}`;
+
+    if (changed) render();
+  } catch (err) {
+    // 本地 API 不可用时，自动降级为从 GitHub raw 读取 data.json
+    if (!force && REMOTE_DATA_URL.includes('raw.githubusercontent.com')) {
+      try {
+        const c2 = new AbortController(); const t2 = setTimeout(() => c2.abort(), 10000);
+        const r2 = await fetch(REMOTE_DATA_URL + '?t=' + Date.now(), { signal: c2.signal });
+        clearTimeout(t2);
+        if (r2.ok) {
+          const rd = await r2.json();
+          const h = rd.history || [];
+          state.history = mergeHistory(h, state.manualRecords);
+          state.current = h[h.length - 1] || null;
+          state.dataSource = 'github';
+          loading.classList.add('hidden');
+          loaded.classList.remove('hidden');
+          if (state.current) render();
+          return;
+        }
+      } catch {}
+    }
+
+    if (force) {
+      loading.classList.add('hidden');
+      error.classList.remove('hidden');
+      const isRemote = !window.location.hostname.match(/^(localhost|127\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)$/);
+      const hint = document.getElementById('error-hint');
+      if (hint && isRemote) {
+        hint.innerHTML = '未检测到本地服务。<br/>方法一：在电脑上访问 <code style="background:var(--surface);padding:2px 8px;border-radius:4px;font-size:11px;">http://localhost:8080/</code><br/>方法二：设置 GitHub Actions 后修改页内 REMOTE_DATA_URL 即可。';
+      } else if (hint) {
+        hint.innerHTML = '请确认本地服务已启动：在项目目录运行 <code style="background:var(--surface);padding:2px 8px;border-radius:4px;font-size:11px;">node server.js</code>';
+      }
+      if (state.current) { error.classList.add('hidden'); loaded.classList.remove('hidden'); }
+    }
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (btn) { btn.classList.remove('loading'); icon.classList.remove('spin'); }
+    lucide.createIcons();
+  }
+}
+
+function startAutoPoll() {
+  stopAutoPoll();
+  // 初始加载
+  refreshData(false);
+  state.autoInterval = setInterval(() => refreshData(false), POLL_INTERVAL);
+}
+function stopAutoPoll() {
+  if (state.autoInterval) { clearInterval(state.autoInterval); state.autoInterval = null; }
+}
+
+function mergeHistory(apiHistory, manualRecords) {
+  // Combine API history with manual records, deduplicated by timestamp
+  const map = new Map();
+  for (const h of apiHistory) {
+    const key = h.timestamp ? h.timestamp.slice(0, 16) : h.date;
+    map.set(key, { ...h, source: 'api' });
+  }
+  for (const r of manualRecords) {
+    const key = r.date;
+    if (!map.has(key)) map.set(key, { ...r, source: 'manual' });
+  }
+  return [...map.values()].sort((a, b) => {
+    const da = a.timestamp || a.date || '';
+    const db = b.timestamp || b.date || '';
+    return da.localeCompare(db);
+  });
+}
+
+// ─── Calculations ───
+function getDailyUsage() {
+  // 按日期分组，每天取「最后一次」读数作为该日的结算值
+  // 日用量 = 前一天结算值 - 当天结算值（代表前一天 24h ~ 当天 24h 的消耗）
+  const sorted = [...state.history].sort((a, b) =>
+    (a.timestamp || a.date || '').localeCompare(b.timestamp || b.date || '')
+  );
+
+  // 分组：每天最后一次读数
+  const dayLast = {};
+  const dayFirst = {};
+  for (const r of sorted) {
+    const date = (r.timestamp || r.date || '').slice(0, 10);
+    if (!date) continue;
+    if (r.remainingKwh != null) {
+      if (!dayFirst[date]) dayFirst[date] = r;
+      dayLast[date] = r; // 最后一条覆盖前面的
+    }
+  }
+
+  const dates = Object.keys(dayLast).sort();
+  const result = [];
+  for (let i = 0; i < dates.length; i++) {
+    const date = dates[i];
+    const cur = dayLast[date];
+    let usage = null;
+    if (i > 0) {
+      // 完整天：前一天结算值 - 当天结算值
+      const prev = dayLast[dates[i - 1]];
+      usage = Math.max(0, (prev.remainingKwh || 0) - (cur.remainingKwh || 0));
+    } else {
+      // 第一天：如果能拿到首条和末条读数，算当日已消耗部分
+      const first = dayFirst[date];
+      if (first && first !== cur) {
+        usage = Math.max(0, (first.remainingKwh || 0) - (cur.remainingKwh || 0));
+      }
+    }
+    result.push({ ...cur, usage, date });
+  }
+  return result;
+}
+
+function getAverageUsage(days = 7) {
+  const records = getDailyUsage();
+  const withUsage = records.filter(r => r.usage != null && r.usage > 0);
+  if (withUsage.length === 0) return 0;
+  return withUsage.slice(-days).reduce((a, b) => a + b.usage, 0) / Math.min(days, withUsage.length);
+}
+
+// ─── Render ───
+function render() {
+  const cur = state.current;
+
+  // KPIs
+  if (cur && cur.remainingBalance != null) {
+    document.getElementById('kpi-balance').textContent = `¥${cur.remainingBalance.toFixed(2)}`;
+    document.getElementById('kpi-kwh').textContent = cur.remainingKwh != null ? cur.remainingKwh.toFixed(2) : '--';
+    document.getElementById('kpi-price').textContent = `¥${cur.unitPrice?.toFixed(3) || '0.977'}`;
+
+    // Estimate days
+    const avgUsage = getAverageUsage(7);
+    const avgCost = avgUsage * (cur.unitPrice || 0.977);
+    const days = avgCost > 0 ? cur.remainingBalance / avgCost : 0;
+    document.getElementById('kpi-days').textContent = days > 0 ? days.toFixed(1) : '--';
+
+    // Alert
+    const banner = document.getElementById('alert-banner');
+    if (cur.remainingBalance <= state.alertThreshold) {
+      banner.classList.remove('hidden');
+      document.getElementById('alert-msg').textContent = `当前 ¥${cur.remainingBalance.toFixed(2)}，低于阈值 ¥${state.alertThreshold}，建议尽快充值`;
+    } else {
+      banner.classList.add('hidden');
+    }
+
+    // Address
+    if (cur.meterName) document.getElementById('addr-display').textContent = cur.meterName;
+  }
+
+  // Quick stats
+  const usageRecords = getDailyUsage();
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const todayRec = usageRecords.find(r => r.date === today);
+  const yesterdayRec = usageRecords.find(r => r.date === yesterday);
+  const avg = getAverageUsage(7);
+
+  document.getElementById('stat-today').innerHTML = todayRec?.usage != null
+    ? `${todayRec.usage.toFixed(2)} <span class="text-sm font-normal text-[var(--text-mute)]">kWh</span>`
+    : `<span class="font-normal text-[var(--text-mute)]">-- kWh</span>`;
+  document.getElementById('stat-yesterday').innerHTML = yesterdayRec?.usage != null
+    ? `${yesterdayRec.usage.toFixed(2)} <span class="text-sm font-normal text-[var(--text-mute)]">kWh</span>`
+    : `<span class="font-normal text-[var(--text-mute)]">-- kWh</span>`;
+  document.getElementById('stat-avg').innerHTML = avg > 0
+    ? `${avg.toFixed(2)} <span class="text-sm font-normal text-[var(--text-mute)]">kWh</span>`
+    : `<span class="font-normal text-[var(--text-mute)]">-- kWh</span>`;
+  const dailyCost = avg * (cur?.unitPrice || 0.977);
+  document.getElementById('stat-cost').innerHTML = avg > 0
+    ? `${dailyCost.toFixed(2)} <span class="text-sm font-normal text-[var(--text-mute)]">元</span>`
+    : `<span class="font-normal text-[var(--text-mute)]">-- 元</span>`;
+
+  // Table
+  const tbody = document.getElementById('records-tbody');
+  if (usageRecords.length === 0) {
+    tbody.innerHTML = '';
+    document.getElementById('empty-state').style.display = 'block';
+  } else {
+    document.getElementById('empty-state').style.display = 'none';
+    const reversed = [...usageRecords].reverse().slice(0, 50);
+    tbody.innerHTML = reversed.map(r => {
+      const ts = fmtLocal(r.timestamp || r.date);
+      const bal = r.remainingBalance != null ? `¥${r.remainingBalance.toFixed(2)}` : '<span class="text-[var(--text-mute)]">--</span>';
+      const kwh = r.remainingKwh != null ? `${r.remainingKwh.toFixed(2)}` : '<span class="text-[var(--text-mute)]">--</span>';
+      const usage = r.usage != null ? `${r.usage.toFixed(2)}` : '<span class="text-[var(--text-mute)]">--</span>';
+      const cost = r.usage != null ? `¥${(r.usage * (r.unitPrice || 0.977)).toFixed(2)}` : '<span class="text-[var(--text-mute)]">--</span>';
+      const isHighColor = r.usage != null && r.usage > avg * 1.5 ? `style="color: var(--danger); font-weight: 600"` : '';
+      return `<tr class="border-b hover:bg-[var(--surface)] transition-colors" style="border-color: var(--border)">
+        <td class="py-2 px-2 font-mono text-xs">${ts}</td>
+        <td class="py-2 px-2 text-right font-mono ticker">${bal}</td>
+        <td class="py-2 px-2 text-right font-mono ticker">${kwh}</td>
+        <td class="py-2 px-2 text-right font-mono ticker" ${isHighColor}>${usage}</td>
+        <td class="py-2 px-2 text-right font-mono ticker text-[var(--text-soft)]">${cost}</td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('record-count').textContent = `(${usageRecords.length})`;
+
+  renderCharts();
+  renderCalendarViews();
+  lucide.createIcons();
+}
+
+// ─── Calendar & Views ───
+let calYear, calMonth, weekStart;
+
+function initCalState() {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth() + 1;
+  weekStart = getWeekStart(now);
+}
+function getWeekStart(d) {
+  const day = d.getDay();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
+}
+
+function calShift(dir) {
+  calMonth += dir;
+  if (calMonth > 12) { calMonth = 1; calYear++; }
+  if (calMonth < 1) { calMonth = 12; calYear--; }
+  renderCalendarViews();
+}
+function monthShift(dir) { calShift(dir); }
+function weekShift(dir) {
+  weekStart = new Date(weekStart);
+  weekStart.setDate(weekStart.getDate() + dir * 7);
+  renderCalendarViews();
+}
+
+function buildUsageMap() {
+  const records = getDailyUsage();
+  const map = {};
+  for (const r of records) {
+    const date = (r.timestamp || r.date || '').slice(0, 10);
+    if (date && r.usage != null) {
+      if (!map[date] || map[date].ts < (r.timestamp || '')) {
+        map[date] = { usage: r.usage, balance: r.remainingBalance, ts: r.timestamp || '' };
+      }
+    }
+  }
+  return map;
+}
+
+function renderCalendarViews() {
+  const usageMap = buildUsageMap();
+  const price = state.current?.unitPrice || 0.977;
+
+  // Tab UI
+  const activeView = document.querySelector('.cal-tab.active')?.dataset.view || 'day';
+  document.getElementById('cal-view-day').classList.toggle('hidden', activeView !== 'day');
+  document.getElementById('cal-view-week').classList.toggle('hidden', activeView !== 'week');
+  document.getElementById('cal-view-month').classList.toggle('hidden', activeView !== 'month');
+
+  // Calendar grid
+  if (activeView === 'day') {
+    document.getElementById('cal-month-label').textContent = `${calYear}年${calMonth}月`;
+    const firstDay = new Date(calYear, calMonth - 1, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+    const grid = document.getElementById('cal-grid');
+    let html = '';
+    for (let i = 0; i < firstDay; i++) html += '<div></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const info = usageMap[date];
+      const usage = info?.usage;
+      let bg = '#f1f5f9', text = 'var(--text-mute)', label = '';
+      if (usage != null && usage > 0) {
+        if (usage < 2) { bg = '#e0f2fe'; text = '#0284c7'; }
+        else if (usage < 5) { bg = '#7dd3fc'; text = '#0369a1'; }
+        else { bg = '#0ea5e9'; text = '#fff'; }
+        label = `<div class="text-[10px] sm:text-xs font-mono mt-0.5">${usage.toFixed(1)}</div>`;
+      }
+      const today = new Date().toISOString().slice(0, 10) === date;
+      html += `<div class="rounded-xl py-1.5 sm:py-2 text-center text-xs sm:text-sm font-medium transition-all hover:scale-105 cursor-default"
+        style="background:${bg}; color:${text}; ${today ? 'box-shadow: 0 0 0 2px var(--primary);' : ''}">
+        <div class="${today ? 'font-bold' : ''}">${d}</div>${label}
+      </div>`;
+    }
+    grid.innerHTML = html;
+  }
+
+  // Week view
+  if (activeView === 'week') {
+    const ws = new Date(weekStart);
+    const we = new Date(ws); we.setDate(we.getDate() + 6);
+    document.getElementById('week-label').textContent =
+      `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')} ~ ${String(we.getMonth()+1).padStart(2,'0')}-${String(we.getDate()).padStart(2,'0')}`;
+
+    const rows = [];
+    let totalKwh = 0, totalCost = 0, daysWithData = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(ws); d.setDate(d.getDate() + i);
+      const date = d.toISOString().slice(0, 10);
+      const info = usageMap[date];
+      const usage = info?.usage;
+      const cost = usage ? usage * price : null;
+      if (usage != null && usage > 0) { totalKwh += usage; totalCost += cost; daysWithData++; }
+      const dow = ['日','一','二','三','四','五','六'][d.getDay()];
+      const isToday = date === new Date().toISOString().slice(0,10);
+      rows.push(`<tr class="border-b" style="border-color: var(--border); ${isToday ? 'background: var(--surface);' : ''}">
+        <td class="py-2 px-2 text-xs font-mono">${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} 周${dow}${isToday ? ' <span class="text-[var(--primary)] font-bold">今天</span>' : ''}</td>
+        <td class="py-2 px-2 text-right font-mono font-semibold">${usage != null && usage > 0 ? usage.toFixed(2) + ' kWh' : '<span class="text-[var(--text-mute)]">--</span>'}</td>
+        <td class="py-2 px-2 text-right font-mono text-[var(--text-soft)]">${cost != null ? '¥' + cost.toFixed(2) : '--'}</td>
+        <td class="py-2 px-2">${usage != null && usage > 0 ? buildBar(usage, 10) : ''}</td>
+      </tr>`);
+    }
+    document.getElementById('week-tbody').innerHTML = rows.join('');
+    const avgKwh = daysWithData > 0 ? totalKwh / daysWithData : 0;
+    document.getElementById('week-summary').innerHTML = `
+      <div class="glass rounded-xl px-4 py-2.5 text-center"><div class="text-[10px] text-[var(--text-mute)]">本周合计</div><div class="font-bold text-sm ticker">${totalKwh.toFixed(2)} kWh</div></div>
+      <div class="glass rounded-xl px-4 py-2.5 text-center"><div class="text-[10px] text-[var(--text-mute)]">合计花费</div><div class="font-bold text-sm ticker">¥${totalCost.toFixed(2)}</div></div>
+      <div class="glass rounded-xl px-4 py-2.5 text-center"><div class="text-[10px] text-[var(--text-mute)]">日均</div><div class="font-bold text-sm ticker">${avgKwh.toFixed(2)} kWh</div></div>
+    `;
+  }
+
+  // Month view
+  if (activeView === 'month') {
+    document.getElementById('month-label').textContent = `${calYear}年${calMonth}月`;
+    const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+    const rows = [];
+    let totalKwh = 0, totalCost = 0, daysWithData = 0, maxUsage = 0;
+    const monthData = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const info = usageMap[date];
+      const usage = info?.usage;
+      const cost = usage ? usage * price : null;
+      const bal = info?.balance;
+      if (usage != null && usage > 0) { totalKwh += usage; totalCost += cost; daysWithData++; if (usage > maxUsage) maxUsage = usage; }
+      monthData.push({ date, usage, cost, bal });
+    }
+    const avgKwh = daysWithData > 0 ? totalKwh / daysInMonth : 0;
+    const projected = avgKwh * daysInMonth;
+
+    document.getElementById('month-stats').innerHTML = `
+      <div class="glass rounded-xl p-3 text-center"><div class="text-xs text-[var(--text-soft)]">已记录天数</div><div class="text-xl font-bold">${daysWithData}<span class="text-sm font-normal text-[var(--text-mute)]">/${daysInMonth}天</span></div></div>
+      <div class="glass rounded-xl p-3 text-center"><div class="text-xs text-[var(--text-soft)]">已用合计</div><div class="text-xl font-bold ticker">${totalKwh.toFixed(1)}<span class="text-sm font-normal text-[var(--text-mute)]"> kWh</span></div></div>
+      <div class="glass rounded-xl p-3 text-center"><div class="text-xs text-[var(--text-soft)]">预估全月</div><div class="text-xl font-bold ticker">${projected.toFixed(1)}<span class="text-sm font-normal text-[var(--text-mute)]"> kWh</span></div></div>
+      <div class="glass rounded-xl p-3 text-center"><div class="text-xs text-[var(--text-soft)]">预估花费</div><div class="text-xl font-bold ticker">¥${(projected * price).toFixed(2)}</div></div>
+    `;
+
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('month-tbody').innerHTML = monthData.map(d => {
+      const isToday = d.date === today;
+      return `<tr class="border-b" style="border-color: var(--border); ${isToday ? 'background: var(--surface);' : ''}">
+        <td class="py-1.5 px-2 font-mono text-xs">${d.date.slice(5)}${isToday ? ' <span class="text-[var(--primary)] font-bold">今天</span>' : ''}</td>
+        <td class="py-1.5 px-2 text-right font-mono font-semibold">${d.usage != null && d.usage > 0 ? d.usage.toFixed(2) + ' kWh' : '<span class="text-[var(--text-mute)]">--</span>'}</td>
+        <td class="py-1.5 px-2 text-right font-mono text-[var(--text-soft)]">${d.cost != null ? '¥' + d.cost.toFixed(2) : '--'}</td>
+        <td class="py-1.5 px-2 text-right font-mono text-[var(--text-soft)]">${d.bal != null ? '¥' + d.bal.toFixed(2) : '--'}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+function buildBar(value, maxVal) {
+  const pct = Math.min(100, (value / maxVal) * 100);
+  return `<div style="background:var(--border); border-radius:3px; height:6px; width:80px; overflow:hidden;">
+    <div style="background:linear-gradient(90deg,var(--primary),var(--accent)); height:100%; width:${pct}%; border-radius:3px;"></div>
+  </div>`;
+}
+
+// ─── Charts ───
+function getChartColors() {
+  const d = state.theme === 'dark';
+  return {
+    text: d ? '#94a3b8' : '#475569',
+    grid: d ? 'rgba(148,163,184,0.1)' : 'rgba(15,23,42,0.06)',
+    primary: d ? '#22d3ee' : '#00b8d4',
+    accent: d ? '#818cf8' : '#6366f1',
+  };
+}
+
+function renderCharts() {
+  const records = getDailyUsage().filter(r => r.remainingBalance != null);
+  const c = getChartColors();
+
+  // Balance chart
+  const ctxB = document.getElementById('chart-balance').getContext('2d');
+  if (chartBalance) chartBalance.destroy();
+  if (records.length === 0) {
+    chartBalance = emptyChart(ctxB);
+  } else {
+    const labels = records.map(r => fmtLocal(r.timestamp || r.date));
+    chartBalance = new Chart(ctxB, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: '余额 (元)', data: records.map(r => r.remainingBalance),
+          borderColor: c.primary, backgroundColor: transparentGrad(ctxB, c.primary, 0.3, 0),
+          fill: true, tension: 0.4, borderWidth: 2.5,
+          pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: c.primary,
+        }],
+      },
+      options: chartOptions(c, v => `¥${v.toFixed(2)}`),
+    });
+  }
+
+  // KWh chart
+  const ctxK = document.getElementById('chart-kwh').getContext('2d');
+  if (chartKwh) chartKwh.destroy();
+  if (records.length === 0) {
+    chartKwh = emptyChart(ctxK);
+  } else {
+    const labels2 = records.map(r => fmtLocal(r.timestamp || r.date));
+    chartKwh = new Chart(ctxK, {
+      type: 'line',
+      data: {
+        labels: labels2,
+        datasets: [{
+          label: '剩余电量 (kWh)', data: records.map(r => r.remainingKwh),
+          borderColor: c.accent, backgroundColor: transparentGrad(ctxK, c.accent, 0.3, 0),
+          fill: true, tension: 0.4, borderWidth: 2.5,
+          pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: c.accent,
+        }],
+      },
+      options: chartOptions(c, v => `${v.toFixed(2)} kWh`),
+    });
+  }
+}
+
+function emptyChart(ctx) {
+  return new Chart(ctx, {
+    type: 'line', data: { labels: ['暂无数据'], datasets: [{ data: [0] }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } },
+  });
+}
+
+function transparentGrad(ctx, color, top, bottom) {
+  const g = ctx.createLinearGradient(0, 0, 0, 260);
+  g.addColorStop(0, color.replace(')', `, ${top})`).replace('rgb', 'rgba'));
+  g.addColorStop(1, color.replace(')', `, ${bottom})`).replace('rgb', 'rgba'));
+  return g;
+}
+
+function chartOptions(c, tooltipFn) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15,23,42,0.95)', padding: 10, cornerRadius: 8,
+        callbacks: { label: ctx => tooltipFn(ctx.parsed.y) },
+      },
+    },
+    scales: {
+      x: { ticks: { color: c.text, font: { size: 10 }, maxTicksLimit: 8 }, grid: { display: false } },
+      y: { ticks: { color: c.text, font: { size: 10 }, callback: v => tooltipFn(v) }, grid: { color: c.grid, drawBorder: false }, beginAtZero: false },
+    },
+  };
+}
+
+// ─── Modals ───
+function openModal(title, html) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal').style.display = 'flex';
+  lucide.createIcons();
+}
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+function openSettings() {
+  openModal('设置', `
+    <div class="space-y-4">
+      <div><label>低余额提醒阈值 (元)</label><input type="number" step="1" id="set-alert" class="input" value="${state.alertThreshold}" /></div>
+      <div class="flex gap-2 pt-2">
+        <button class="btn btn-main flex-1 justify-center" onclick="saveSettings()">保存</button>
+        <button class="btn btn-ghost flex-1 justify-center" onclick="closeModal()">取消</button>
+      </div>
+    </div>
+  `);
+}
+function saveSettings() {
+  state.alertThreshold = parseFloat(document.getElementById('set-alert').value) || 30;
+  saveLocal({ theme: state.theme, alertThreshold: state.alertThreshold, manualRecords: state.manualRecords });
+  closeModal();
+  render();
+}
+
+function openManualInput() {
+  openModal('手动记录', `
+    <div class="space-y-3">
+      <div><label>日期</label><input type="date" id="m-date" class="input" value="${new Date().toISOString().slice(0,10)}" /></div>
+      <div><label>剩余电量 (kWh)</label><input type="number" step="0.01" id="m-kwh" class="input" placeholder="如 32.65" /></div>
+      <div><label>剩余金额 (元)</label><input type="number" step="0.01" id="m-bal" class="input" placeholder="如 31.90" /></div>
+      <div class="flex gap-2 pt-2">
+        <button class="btn btn-main flex-1 justify-center" onclick="addManual()">保存</button>
+        <button class="btn btn-ghost flex-1 justify-center" onclick="closeModal()">取消</button>
+      </div>
+    </div>
+  `);
+}
+function addManual() {
+  const date = document.getElementById('m-date').value;
+  const kwh = parseFloat(document.getElementById('m-kwh').value);
+  const bal = parseFloat(document.getElementById('m-bal').value);
+  if (!date || isNaN(kwh) || isNaN(bal)) return;
+  state.manualRecords = state.manualRecords.filter(r => r.date !== date);
+  state.manualRecords.push({
+    date, remainingKwh: kwh, remainingBalance: bal,
+    unitPrice: state.current?.unitPrice || 0.977,
+    timestamp: new Date().toISOString(),
+  });
+  saveLocal({ theme: state.theme, alertThreshold: state.alertThreshold, manualRecords: state.manualRecords });
+  state.history = mergeHistory(state.history, state.manualRecords);
+  closeModal();
+  render();
+}
+
+function confirmClear() {
+  openModal('清空所有数据？', `
+    <p class="text-sm text-[var(--text-soft)] mb-4">将清空服务器历史记录和本地数据，不可恢复。</p>
+    <div class="flex gap-2">
+      <button class="btn btn-main flex-1 justify-center" style="background: linear-gradient(135deg, #ef4444, #f97316);" onclick="clearAll()">确认清空</button>
+      <button class="btn btn-ghost flex-1 justify-center" onclick="closeModal()">取消</button>
+    </div>
+  `);
+}
+async function clearAll() {
+  await fetch(API_BASE + '/api/history/clear', { method: 'POST' }).catch(() => {});
+  state.history = [];
+  state.manualRecords = [];
+  saveLocal({ theme: state.theme, alertThreshold: state.alertThreshold, manualRecords: [] });
+  closeModal();
+  document.getElementById('status-loaded').classList.add('hidden');
+  document.getElementById('status-empty').classList.remove('hidden');
+  render();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({ history: state.history, current: state.current }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `电费数据_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+// ─── Init ───
+initLocal();
+initCalState();
+applyTheme(state.theme);
+
+// Calendar tab clicks
+document.querySelectorAll('.cal-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.cal-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderCalendarViews();
+  });
+});
+
+// Show local IP footer when running locally
+const host = window.location.hostname;
+if (host === 'localhost' || host === '127.0.0.1' || host.match(/^192\.168\./)) {
+  document.getElementById('footer-local').classList.remove('hidden');
+}
+
+// Show empty state initially
+document.getElementById('status-empty').classList.remove('hidden');
+
+// 后台每 5 秒自动获取数据（/api/meter 即时返回缓存），同时做一次强制刷新
+refreshData(true);
+startAutoPoll();
+
+// 页面隐藏时暂停轮询以节省资源
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopAutoPoll();
+  else { refreshData(false); startAutoPoll(); }
+});
+
+renderCalendarViews();
+
+lucide.createIcons();
+</script>
+</body>
+</html>

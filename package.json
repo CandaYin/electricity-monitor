@@ -1,0 +1,9 @@
+{
+  "name": "electricity-monitor",
+  "version": "1.0.0",
+  "description": "宝庆苑5-2-1702-2 电费实时监控系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

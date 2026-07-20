@@ -1,0 +1,68 @@
+{
+  "history": [
+    {
+      "meterName": "宝庆苑5-2-1702-2",
+      "meterId": "19501460208",
+      "remainingKwh": 32.43,
+      "remainingBalance": 31.68,
+      "unitPrice": 0.977,
+      "timestamp": "2026-07-20T12:58:16.077Z"
+    },
+    {
+      "meterName": "宝庆苑5-2-1702-2",
+      "meterId": "19501460208",
+      "remainingKwh": 32.35,
+      "remainingBalance": 31.61,
+      "unitPrice": 0.977,
+      "timestamp": "2026-07-20T13:04:26.362Z"
+    },
+    {
+      "meterName": "宝庆苑5-2-1702-2",
+      "meterId": "19501460208",
+      "remainingKwh": 32.32,
+      "remainingBalance": 31.58,
+      "unitPrice": 0.977,
+      "timestamp": "2026-07-20T13:08:07.245Z"
+    },
+    {
+      "meterName": "宝庆苑5-2-1702-2",
+      "meterId": "19501460208",
+      "remainingKwh": 32.29,
+      "remainingBalance": 31.55,
+      "unitPrice": 0.977,
+      "timestamp": "2026-07-20T13:11:03.583Z"
+    },
+    {
+      "meterName": "宝庆苑5-2-1702-2",
+      "meterId": "19501460208",
+      "remainingKwh": 32.26,
+      "remainingBalance": 31.52,
+      "unitPrice": 0.977,
+      "timestamp": "2026-07-20T13:13:03.581Z"
+    },
+    {
+      "meterName": "宝庆苑5-2-1702-2",
+      "meterId": "19501460208",
+      "remainingKwh": 32.24,
+      "remainingBalance": 31.5,
+      "unitPrice": 0.977,
+      "timestamp": "2026-07-20T13:16:03.633Z"
+    },
+    {
+      "meterName": "宝庆苑5-2-1702-2",
+      "meterId": "19501460208",
+      "remainingKwh": 32.21,
+      "remainingBalance": 31.47,
+      "unitPrice": 0.977,
+      "timestamp": "2026-07-20T13:19:03.742Z"
+    },
+    {
+      "meterName": "宝庆苑5-2-1702-2",
+      "meterId": "19501460208",
+      "remainingKwh": 32.18,
+      "remainingBalance": 31.44,
+      "unitPrice": 0.977,
+      "timestamp": "2026-07-20T13:22:03.678Z"
+    }
+  ]
+}
