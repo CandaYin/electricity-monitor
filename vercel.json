@@ -1,7 +1,9 @@
 {
+  "version": 2,
+  "buildCommand": "",
+  "outputDirectory": "public",
   "functions": {
     "api/fetch.js": {
-      "memory": 128,
       "maxDuration": 30
     }
   }
