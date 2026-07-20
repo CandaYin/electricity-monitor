@@ -205,12 +205,12 @@
       <div class="text-xs text-[var(--text-mute)] mb-3 leading-relaxed" id="error-hint">
         如果你在 CloudStudio 上查看，请在电脑上运行<br/><code style="background:var(--surface);padding:2px 8px;border-radius:4px;font-size:11px;">node server.js</code> 启动本地服务后访问本页面。
       </div>
-      <button onclick="refreshData(true)" class="btn btn-main">重新获取</button>
+      <button onclick="refreshData(false)" class="btn btn-main">重新获取</button>
     </div>
     <div id="status-empty" class="hidden text-center py-6">
       <i data-lucide="plug" class="w-10 h-10 mx-auto mb-3 text-[var(--text-mute)]"></i>
       <div class="text-sm text-[var(--text-soft)] mb-3">确保本地服务已启动，然后点击按钮获取数据</div>
-      <button onclick="refreshData(true)" class="btn btn-main">
+      <button onclick="refreshData(false)" class="btn btn-main">
         <i data-lucide="download-cloud" class="w-4 h-4"></i>
         获取数据
       </button>
@@ -246,7 +246,7 @@
 
         <!-- Refresh button -->
         <div class="md:ml-auto flex-shrink-0">
-          <button onclick="refreshData(true)" id="refresh-btn" class="btn btn-main">
+          <button onclick="refreshData(state.dataSource==='github' ? false : true)" id="refresh-btn" class="btn btn-main">
             <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-icon"></i>
             刷新数据
           </button>
@@ -1077,8 +1077,8 @@ if (host === 'localhost' || host === '127.0.0.1' || host.match(/^192\.168\./)) {
 // Show empty state initially
 document.getElementById('status-empty').classList.remove('hidden');
 
-// 后台每 5 秒自动获取数据（/api/meter 即时返回缓存），同时做一次强制刷新
-refreshData(true);
+// 先尝试加载数据（自动降级到 GitHub），再启动定时轮询
+refreshData(false);
 startAutoPoll();
 
 // 页面隐藏时暂停轮询以节省资源
