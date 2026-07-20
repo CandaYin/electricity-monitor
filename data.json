@@ -175,6 +175,14 @@
       "remainingBalance": 30.98,
       "unitPrice": 0.977,
       "timestamp": "2026-07-20T14:04:17.543Z"
+    },
+    {
+      "meterName": "宝庆苑5-2-1702-2",
+      "meterId": "19501460208",
+      "remainingKwh": 31.68,
+      "remainingBalance": 30.95,
+      "unitPrice": 0.977,
+      "timestamp": "2026-07-20T14:07:02.930Z"
     }
   ]
 }
