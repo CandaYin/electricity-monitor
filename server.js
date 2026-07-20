@@ -4,6 +4,7 @@ const path = require('path');
 
 const PORT = 8080;
 const AUTO_INTERVAL = 30000; // 每 30 秒自动抓取一次
+const SYNC_INTERVAL = 300000; // 每 5 分钟同步到 GitHub
 const DATA_FILE = path.join(__dirname, 'data.json');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
 
@@ -98,6 +99,7 @@ async function fetchAndStore() {
     cache.history.push(fresh);
     if (cache.history.length > 525600) cache.history = cache.history.slice(-525600); // ~1 year at 1/min
     saveData();
+    gitDirty = true;
     console.log(`[auto] ¥${fresh.remainingBalance} | ${fresh.remainingKwh} kWh | ${new Date().toLocaleTimeString('zh-CN')}`);
   }
 }
@@ -115,7 +117,33 @@ function startAutoRefresh() {
   setInterval(() => {
     fetchAndStore().catch(e => { cache.lastError = e.message; console.error('[auto] 抓取失败:', e.message); });
   }, AUTO_INTERVAL);
+
+  // 定时同步到 GitHub
+  startGitSync();
 }
+
+// ─── Git Sync ───
+let gitDirty = false;
+function startGitSync() {
+  const { execSync } = require('child_process');
+  setInterval(() => {
+    if (!gitDirty) return;
+    gitDirty = false;
+    try {
+      execSync('git add data.json', { cwd: __dirname, timeout: 5000 });
+      execSync('git commit -m "auto: sync meter data"', { cwd: __dirname, timeout: 5000 });
+      execSync('git push origin main', { cwd: __dirname, timeout: 15000 });
+      console.log('[git] 已同步到 GitHub');
+    } catch (e) {
+      // Ignore "nothing to commit" and network errors
+      const msg = (e.stderr || e.message || '').toString();
+      if (msg.includes('nothing to commit')) { /* ok */ }
+      else console.error('[git] 同步失败:', msg.slice(0, 100));
+    }
+  }, SYNC_INTERVAL);
+}
+
+// 在 saveData 中标记待同步
 
 // ─── HTTP Server ───
 const server = http.createServer(async (req, res) => {

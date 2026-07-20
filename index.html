@@ -428,8 +428,8 @@ let state = { history: [], current: null, theme: 'light', alertThreshold: 30, ma
 let chartBalance, chartKwh;
 const API_BASE = '';
 const POLL_INTERVAL = 5000;
-// 改成你的 GitHub 用户名和仓库名即可
-const REMOTE_DATA_URL = 'https://raw.githubusercontent.com/CandaYin/electricity-monitor/main/data.json';
+// jsDelivr 比 raw.githubusercontent.com CDN 更新更快
+const REMOTE_DATA_URL = 'https://cdn.jsdelivr.net/gh/CandaYin/electricity-monitor@main/data.json';
 
 // ─── Helpers ───
 function fmtLocal(ts) {
@@ -522,7 +522,7 @@ async function refreshData(force = false) {
     if (changed) render();
   } catch (err) {
     // 本地 API 不可用时，自动降级为从 GitHub raw 读取 data.json
-    if (!force && REMOTE_DATA_URL.includes('raw.githubusercontent.com')) {
+    if (!force && REMOTE_DATA_URL.includes('cdn.jsdelivr.net')) {
       try {
         const c2 = new AbortController(); const t2 = setTimeout(() => c2.abort(), 10000);
         const r2 = await fetch(REMOTE_DATA_URL + '?t=' + Date.now(), { signal: c2.signal });
