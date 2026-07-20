@@ -511,7 +511,7 @@ async function refreshData(force = false) {
     state.dataSource = 'local';
     state.history = mergeHistory(state.history, state.manualRecords);
 
-    loading.classList.add('hidden');
+    [loading, error, empty, loaded].forEach(el => el.classList.add('hidden'));
     loaded.classList.remove('hidden');
 
     const now = new Date();
@@ -533,9 +533,13 @@ async function refreshData(force = false) {
           state.history = mergeHistory(h, state.manualRecords);
           state.current = h[h.length - 1] || null;
           state.dataSource = 'github';
-          loading.classList.add('hidden');
-          loaded.classList.remove('hidden');
-          if (state.current) render();
+          [loading, error, empty, loaded].forEach(el => el.classList.add('hidden'));
+          if (state.current) {
+            loaded.classList.remove('hidden');
+            render();
+          } else {
+            empty.classList.remove('hidden');
+          }
           return;
         }
       } catch {}
