@@ -12395,6 +12395,12 @@
       "remainingBalance": 102.39,
       "unitPrice": 0.977,
       "timestamp": "2026-11-24T21:28:49.477Z"
+    },
+    {
+      "remainingKwh": 1.55,
+      "remainingBalance": 1.51,
+      "unitPrice": 0.977,
+      "timestamp": "2026-11-28T13:42:15.854Z"
     }
   ]
 }
